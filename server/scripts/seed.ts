@@ -2,7 +2,6 @@ import mongoose from "mongoose";
 import { config } from "../src/config.js";
 import Admin from "../src/models/Admin.js";
 import User from "../src/models/User.js";
-import Product from "../src/models/Product.js";
 
 async function seed() {
   try {
@@ -26,54 +25,42 @@ async function seed() {
       console.log("ℹ️ Admin admin@astro.com already exists.");
     }
 
-    // 2. Seed Standard User
-    const existingUser = await User.findOne({ mail: "user@astro.com" });
-    if (!existingUser) {
-      const defaultUser = new User({
-        name: "Test Customer",
-        mail: "user@astro.com",
+    // 2. Seed Client User
+    const existingClient = await User.findOne({ mail: "client@velco.com" });
+    if (!existingClient) {
+      const defaultClient = new User({
+        name: "Test Client User",
+        mail: "client@velco.com",
         phone: "+1555123456",
-        password: "userpassword123",
+        password: "clientpassword123",
         status: "Active",
+        role: "client",
       });
-      await defaultUser.save();
-      console.log("✅ Seeded User Credentials:");
-      console.log("   Email:    user@astro.com");
-      console.log("   Password: userpassword123");
+      await defaultClient.save();
+      console.log("✅ Seeded Client Credentials:");
+      console.log("   Email:    client@velco.com");
+      console.log("   Password: clientpassword123");
     } else {
-      console.log("ℹ️ User user@astro.com already exists.");
+      console.log("ℹ️ Client client@velco.com already exists.");
     }
 
-    // 3. Seed Products if empty
-    const productCount = await Product.countDocuments();
-    if (productCount === 0) {
-      const defaultProducts = [
-        {
-          name: "Vedic Astral Gemstone Ring",
-          price: 249,
-          description: "A customized energized yellow sapphire ring tuned to balance Jupiter energies in your birth chart.",
-          status: "Active",
-          photos: ["https://images.unsplash.com/photo-1605100804763-247f67b3557e?w=500&auto=format&fit=crop&q=60"],
-        },
-        {
-          name: "Personalized Kundli Report (Premium)",
-          price: 49,
-          description: "Over 80 pages of precise Vedic calculations, planetary alignments, Dashas, and transit forecasts.",
-          status: "Active",
-          photos: ["https://images.unsplash.com/photo-1506784983877-45594efa4cbe?w=500&auto=format&fit=crop&q=60"],
-        },
-        {
-          name: "Rudraksha Mala (108 beads)",
-          price: 29,
-          description: "Five Mukhi Shiva beads sourced directly from the Himalayas, energized for mental clarity and protection.",
-          status: "Active",
-          photos: ["https://images.unsplash.com/photo-1596178060810-72cb61274c43?w=500&auto=format&fit=crop&q=60"],
-        },
-      ];
-      await Product.insertMany(defaultProducts);
-      console.log("✅ Seeded default astrology products.");
+    // 3. Seed Delivery Rider User
+    const existingDelivery = await User.findOne({ mail: "delivery@velco.com" });
+    if (!existingDelivery) {
+      const defaultDelivery = new User({
+        name: "Test Delivery Rider User",
+        mail: "delivery@velco.com",
+        phone: "+1555987654",
+        password: "deliverypassword123",
+        status: "Active",
+        role: "delivery",
+      });
+      await defaultDelivery.save();
+      console.log("✅ Seeded Delivery Credentials:");
+      console.log("   Email:    delivery@velco.com");
+      console.log("   Password: deliverypassword123");
     } else {
-      console.log("ℹ️ Products already present in catalog.");
+      console.log("ℹ️ Delivery rider delivery@velco.com already exists.");
     }
 
     console.log("Seed script finished successfully.");

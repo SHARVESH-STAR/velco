@@ -12,6 +12,19 @@ import { upload } from "../middleware/upload.js";
 
 const router = Router();
 
+// --- Public Client Routes ---
+router.post(
+  "/login",
+  (req: Request, res: Response, next: NextFunction) =>
+    clientController.loginClient(req, res, next),
+);
+
+router.post(
+  "/login/google",
+  (req: Request, res: Response, next: NextFunction) =>
+    clientController.loginGoogle(req, res, next),
+);
+
 // Protect client endpoints
 router.use(authenticate as RequestHandler);
 

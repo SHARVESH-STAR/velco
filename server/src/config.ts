@@ -10,6 +10,9 @@ class Config {
   public customerServiceNumber: string;
   public isProduction: boolean;
   public uploadDir: string;
+  public googleWebClientId: string | undefined;
+  public googleIosClientId: string | undefined;
+  public googleAndroidClientId: string | undefined;
 
   constructor() {
     this.PORT = Number(process.env.PORT) || 3030;
@@ -29,6 +32,10 @@ class Config {
     this.isProduction = process.env.NODE_ENV === "production";
     
     this.uploadDir = process.env.UPLOAD_DIR || "uploads";
+
+    this.googleWebClientId = process.env.GOOGLE_WEB_CLIENT_ID;
+    this.googleIosClientId = process.env.GOOGLE_IOS_CLIENT_ID;
+    this.googleAndroidClientId = process.env.GOOGLE_ANDROID_CLIENT_ID;
   }
 }
 

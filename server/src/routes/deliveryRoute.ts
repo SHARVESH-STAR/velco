@@ -11,6 +11,19 @@ import { authenticate } from "../middleware/authMiddleware.js";
 
 const router = Router();
 
+// --- Public Delivery Routes ---
+router.post(
+  "/login",
+  (req: Request, res: Response, next: NextFunction) =>
+    deliveryController.loginDelivery(req, res, next),
+);
+
+router.post(
+  "/login/google",
+  (req: Request, res: Response, next: NextFunction) =>
+    deliveryController.loginGoogle(req, res, next),
+);
+
 // Protect delivery endpoints
 router.use(authenticate as RequestHandler);
 

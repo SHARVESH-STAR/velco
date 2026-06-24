@@ -1,6 +1,6 @@
-# Velco Logistics Platform 🚀
+# Velco Platform 🚀
 
-Velco is a premium, high-performance logistics and delivery platform featuring a universal mobile/web frontend and a fast Node/Bun API backend. The codebase is organized as a monorepo containing the following components:
+Velco is a premium, high-performance and delivery platform featuring a universal mobile/web frontend and a fast Node/Bun API backend. The codebase is organized as a monorepo containing the following components:
 
 - **Client**: Universal Expo & React Native mobile and web application.
 - **Server**: Fast Express.js API backend running on the Bun runtime.
