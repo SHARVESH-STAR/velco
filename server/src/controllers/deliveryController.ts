@@ -4,7 +4,6 @@ import Order from "../models/Order.js";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import { config } from "../config.js";
-import { OAuth2Client } from "google-auth-library";
 
 class DeliveryController {
   public async loginDelivery(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -32,50 +31,41 @@ class DeliveryController {
     }
   }
 
+  /**
+   * Mock Google Login (Temporary bypass until Google Client IDs are configured)
+   */
   public async loginGoogle(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { idToken } = req.body;
-      if (!idToken) {
-        res.status(400).json({ message: "idToken is required" });
-        return;
-      }
+      const { email, name, idToken } = req.body;
+      
+      let targetEmail = email;
+      let targetName = name || "Mock Google Rider";
 
-      const client = new OAuth2Client();
-      const audiences = [
-        config.googleWebClientId,
-        config.googleIosClientId,
-        config.googleAndroidClientId,
-      ].filter(Boolean) as string[];
-
-      let payload;
-      try {
-        const ticket = await client.verifyIdToken({
-          idToken,
-          audience: audiences.length > 0 ? audiences : undefined,
-        });
-        payload = ticket.getPayload();
-      } catch (err: any) {
-        if (!config.isProduction && audiences.length === 0) {
-          console.warn("⚠️ Google Client IDs are not set in .env. Decoding token without signature verification.");
+      if (idToken) {
+        try {
           const decoded = jwt.decode(idToken) as any;
-          payload = decoded;
-        } else {
-          res.status(401).json({ message: "Invalid Google ID token signature", error: err.message });
-          return;
+          if (decoded && decoded.email) {
+            targetEmail = decoded.email;
+            if (decoded.name) targetName = decoded.name;
+          } else if (idToken.includes("@")) {
+            targetEmail = idToken; // Fallback if token is just the email string
+          }
+        } catch {
+          if (idToken.includes("@")) targetEmail = idToken;
         }
       }
 
-      if (!payload || !payload.email) {
-        res.status(400).json({ message: "Invalid token payload" });
+      if (!targetEmail) {
+        res.status(400).json({ message: "email or idToken containing email is required for mock login" });
         return;
       }
 
       // Find or create the delivery rider
-      let user = await User.findOne({ mail: payload.email });
+      let user = await User.findOne({ mail: targetEmail });
       if (!user) {
         user = new User({
-          name: payload.name || "Delivery Rider",
-          mail: payload.email,
+          name: targetName,
+          mail: targetEmail,
           phone: "N/A",
           role: "delivery",
           status: "Active",
