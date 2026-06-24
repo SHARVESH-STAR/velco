@@ -2,8 +2,35 @@ import type { Request, Response, NextFunction } from "express";
 import type { AuthRequest } from "../middleware/authMiddleware.js";
 import Order from "../models/Order.js";
 import User from "../models/User.js";
+import Admin from "../models/Admin.js";
 import jwt from "jsonwebtoken";
 import { config } from "../config.js";
+import { OAuth2Client } from "google-auth-library";
+
+/**
+ * Geocodes an address string to get latitude and longitude via OpenStreetMap Nominatim.
+ * Falls back to San Francisco coordinates if geocoding fails.
+ */
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number }> {
+  try {
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "VelcoLogisticsApp/1.0",
+      },
+    });
+    const data = await response.json() as any[];
+    if (data && data.length > 0) {
+      return {
+        lat: parseFloat(data[0].lat),
+        lng: parseFloat(data[0].lon),
+      };
+    }
+  } catch (err) {
+    console.warn(`Geocoding failed for address: "${address}". Using fallback.`, err);
+  }
+  return { lat: 37.7749, lng: -122.4194 }; // San Francisco default fallback
+}
 
 class ClientController {
   public async loginClient(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -32,7 +59,7 @@ class ClientController {
   }
 
   /**
-   * Mock Google Login (Temporary bypass until Google Client IDs are configured)
+   * Mock Google Login
    */
   public async loginGoogle(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -48,7 +75,7 @@ class ClientController {
             targetEmail = decoded.email;
             if (decoded.name) targetName = decoded.name;
           } else if (idToken.includes("@")) {
-            targetEmail = idToken; // Fallback if token is just the email string
+            targetEmail = idToken;
           }
         } catch {
           if (idToken.includes("@")) targetEmail = idToken;
@@ -66,7 +93,7 @@ class ClientController {
         user = new User({
           name: targetName,
           mail: targetEmail,
-          phone: "N/A", // Client will supply phone number later
+          phone: "N/A",
           role: "client",
           status: "Active",
         });
@@ -88,8 +115,67 @@ class ClientController {
 
   public async createOrder(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { pickupAddress, dropoffAddress, paymentmethod, items, totalAmount } = req.body;
-      
+      const { 
+        pickupLocationName, 
+        dropoffLocationName, 
+        pickupLocation, 
+        dropoffLocation, 
+        weight, 
+        paymentmethod, 
+        items, 
+        totalAmount, 
+        adminId 
+      } = req.body;
+
+      // Ensure we have pickup location coordinates
+      let finalPickup = { name: "", lat: 0, lng: 0 };
+      if (pickupLocation && typeof pickupLocation === "object" && pickupLocation.name) {
+        finalPickup = {
+          name: pickupLocation.name,
+          lat: Number(pickupLocation.lat) || 0,
+          lng: Number(pickupLocation.lng) || 0,
+        };
+      } else if (pickupLocationName) {
+        const coords = await geocodeAddress(pickupLocationName);
+        finalPickup = {
+          name: pickupLocationName,
+          lat: coords.lat,
+          lng: coords.lng,
+        };
+      } else {
+        res.status(400).json({ message: "Pickup location details are required" });
+        return;
+      }
+
+      // Ensure we have dropoff location coordinates
+      let finalDropoff = { name: "", lat: 0, lng: 0 };
+      if (dropoffLocation && typeof dropoffLocation === "object" && dropoffLocation.name) {
+        finalDropoff = {
+          name: dropoffLocation.name,
+          lat: Number(dropoffLocation.lat) || 0,
+          lng: Number(dropoffLocation.lng) || 0,
+        };
+      } else if (dropoffLocationName) {
+        const coords = await geocodeAddress(dropoffLocationName);
+        finalDropoff = {
+          name: dropoffLocationName,
+          lat: coords.lat,
+          lng: coords.lng,
+        };
+      } else {
+        res.status(400).json({ message: "Drop-off location details are required" });
+        return;
+      }
+
+      // Find an administrator to auto-assign if not specified
+      let assignedAdminId = adminId;
+      if (!assignedAdminId) {
+        const defaultAdmin = await Admin.findOne();
+        if (defaultAdmin) {
+          assignedAdminId = defaultAdmin.id;
+        }
+      }
+
       // Get uploaded files (if any)
       const images: string[] = [];
       if (req.files && Array.isArray(req.files)) {
@@ -105,8 +191,10 @@ class ClientController {
         items: items || [],
         totalAmount: totalAmount || 0,
         paymentmethod: paymentmethod || "cash",
-        pickupAddress,
-        dropoffAddress,
+        pickupLocation: finalPickup,
+        dropoffLocation: finalDropoff,
+        weight: Number(weight) || 0,
+        adminId: assignedAdminId,
         images,
         status: "pending",
       });

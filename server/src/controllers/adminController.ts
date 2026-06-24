@@ -92,8 +92,13 @@ class AdminController {
 
   public async assignDelivery(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { id } = req.params;
+      const orderId = req.params.id || req.body.orderId;
       const { deliveryRiderId } = req.body;
+
+      if (!orderId) {
+        res.status(400).json({ message: "orderId is required" });
+        return;
+      }
       if (!deliveryRiderId) {
         res.status(400).json({ message: "deliveryRiderId is required" });
         return;
@@ -104,7 +109,7 @@ class AdminController {
         return;
       }
       const order = await Order.findByIdAndUpdate(
-        id,
+        orderId,
         { deliveryRiderId, status: "assigned" },
         { new: true }
       );

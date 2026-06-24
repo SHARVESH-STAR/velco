@@ -43,4 +43,8 @@ router.put("/orders/:id/assign", (req: Request, res: Response, next: NextFunctio
   adminController.assignDelivery(req, res, next),
 );
 
+router.post("/delivery/assign", (req: Request, res: Response, next: NextFunction) =>
+  adminController.assignDelivery(req, res, next),
+);
+
 export default router;

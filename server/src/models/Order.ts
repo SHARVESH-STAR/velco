@@ -6,6 +6,12 @@ export interface IOrderItem {
   price: number;
 }
 
+export interface ILocation {
+  name: string;
+  lat: number;
+  lng: number;
+}
+
 export interface IOrder extends Document {
   userId: mongoose.Types.ObjectId;
   items: IOrderItem[];
@@ -14,9 +20,20 @@ export interface IOrder extends Document {
   status: string;
   deliveryRiderId?: mongoose.Types.ObjectId;
   images?: string[];
-  pickupAddress?: string;
-  dropoffAddress?: string;
+  pickupLocation: ILocation;
+  dropoffLocation: ILocation;
+  weight: number;
+  adminId?: mongoose.Types.ObjectId;
 }
+
+const locationSchema = new Schema<ILocation>(
+  {
+    name: { type: String, required: true },
+    lat: { type: Number, required: true },
+    lng: { type: Number, required: true },
+  },
+  { _id: false }
+);
 
 const orderItemSchema = new Schema<IOrderItem>({
   productId: { type: Schema.Types.ObjectId, ref: "Product", required: true },
@@ -53,11 +70,22 @@ const orderSchema = new Schema<IOrder>(
       type: [String],
       default: [],
     },
-    pickupAddress: {
-      type: String,
+    pickupLocation: {
+      type: locationSchema,
+      required: true,
     },
-    dropoffAddress: {
-      type: String,
+    dropoffLocation: {
+      type: locationSchema,
+      required: true,
+    },
+    weight: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    adminId: {
+      type: Schema.Types.ObjectId,
+      ref: "Admin",
     },
   },
   { timestamps: true },
