@@ -6,6 +6,7 @@ import Admin from "../models/Admin.js";
 import jwt from "jsonwebtoken";
 import { config } from "../config.js";
 import { OAuth2Client } from "google-auth-library";
+import { orderEvents } from "../utils/orderEvents.js";
 
 /**
  * Geocodes an address string to get latitude and longitude via OpenStreetMap Nominatim.
@@ -200,16 +201,47 @@ class ClientController {
       });
 
       await order.save();
+
+      // Emit event
+      orderEvents.emit("change", { type: "create", order });
+
       res.status(201).json({ message: "Order created successfully", order });
     } catch (error) {
       next(error);
     }
   }
 
+  /**
+   * Real-time Client Order History Stream (Server-Sent Events)
+   */
   public async getOrders(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const orders = await Order.find({ userId: req.user!.id }).populate("deliveryRiderId");
-      res.status(200).json(orders);
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
+
+      const sendClientOrders = async (type: string, changedOrder?: any) => {
+        const orders = await Order.find({ userId: req.user!.id }).populate("deliveryRiderId");
+        res.write(`data: ${JSON.stringify({ type, changedOrder, orders })}\n\n`);
+      };
+
+      await sendClientOrders("initial");
+
+      const handleOrderChange = async (event: { type: string; order?: any; orderId?: string }) => {
+        if (event.order && String(event.order.userId) === String(req.user!.id)) {
+          await sendClientOrders(event.type, event.order);
+        } else if (event.type === "delete") {
+          await sendClientOrders("delete", { _id: event.orderId });
+        }
+      };
+
+      orderEvents.on("change", handleOrderChange);
+
+      req.on("close", () => {
+        orderEvents.off("change", handleOrderChange);
+        res.end();
+      });
     } catch (error) {
       next(error);
     }

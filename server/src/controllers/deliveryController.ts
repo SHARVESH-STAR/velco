@@ -4,6 +4,8 @@ import Order from "../models/Order.js";
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import { config } from "../config.js";
+import { OAuth2Client } from "google-auth-library";
+import { orderEvents } from "../utils/orderEvents.js";
 
 class DeliveryController {
   public async loginDelivery(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -32,7 +34,7 @@ class DeliveryController {
   }
 
   /**
-   * Mock Google Login (Temporary bypass until Google Client IDs are configured)
+   * Mock Google Login
    */
   public async loginGoogle(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
@@ -48,7 +50,7 @@ class DeliveryController {
             targetEmail = decoded.email;
             if (decoded.name) targetName = decoded.name;
           } else if (idToken.includes("@")) {
-            targetEmail = idToken; // Fallback if token is just the email string
+            targetEmail = idToken;
           }
         } catch {
           if (idToken.includes("@")) targetEmail = idToken;
@@ -86,10 +88,37 @@ class DeliveryController {
     }
   }
 
+  /**
+   * Real-time Assigned Jobs Stream (Server-Sent Events)
+   */
   public async getAssignedJobs(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
     try {
-      const jobs = await Order.find({ deliveryRiderId: req.user!.id }).populate("userId");
-      res.status(200).json(jobs);
+      res.setHeader("Content-Type", "text/event-stream");
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.flushHeaders();
+
+      const sendRiderJobs = async (type: string, changedOrder?: any) => {
+        const jobs = await Order.find({ deliveryRiderId: req.user!.id }).populate("userId");
+        res.write(`data: ${JSON.stringify({ type, changedOrder, jobs })}\n\n`);
+      };
+
+      await sendRiderJobs("initial");
+
+      const handleOrderChange = async (event: { type: string; order?: any; orderId?: string }) => {
+        if (event.order && String(event.order.deliveryRiderId) === String(req.user!.id)) {
+          await sendRiderJobs(event.type, event.order);
+        } else if (event.type === "delete") {
+          await sendRiderJobs("delete", { _id: event.orderId });
+        }
+      };
+
+      orderEvents.on("change", handleOrderChange);
+
+      req.on("close", () => {
+        orderEvents.off("change", handleOrderChange);
+        res.end();
+      });
     } catch (error) {
       next(error);
     }
@@ -114,6 +143,9 @@ class DeliveryController {
 
       order.status = status;
       await order.save();
+
+      // Emit event
+      orderEvents.emit("change", { type: "update", order });
 
       res.status(200).json({ message: "Job status updated successfully", order });
     } catch (error) {
