@@ -113,6 +113,21 @@ class DeliveryController {
       }
 
       order.status = status;
+
+      // Handle uploaded delivery confirmation photos
+      const images: string[] = [];
+      if (req.files && Array.isArray(req.files)) {
+        req.files.forEach((file: any) => {
+          images.push(`/uploads/${file.filename}`);
+        });
+      } else if (req.file) {
+        images.push(`/uploads/${req.file.filename}`);
+      }
+
+      if (images.length > 0) {
+        order.images = [...(order.images || []), ...images];
+      }
+
       await order.save();
 
       res.status(200).json({ message: "Job status updated successfully", order });

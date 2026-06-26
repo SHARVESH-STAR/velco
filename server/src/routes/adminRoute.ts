@@ -27,6 +27,10 @@ router.get("/clients", (req: Request, res: Response, next: NextFunction) =>
   adminController.getAllClients(req, res, next),
 );
 
+router.get("/riders", (req: Request, res: Response, next: NextFunction) =>
+  adminController.getAllRiders(req, res, next),
+);
+
 router.get("/search", (req: Request, res: Response, next: NextFunction) =>
   adminController.search(req, res, next),
 );

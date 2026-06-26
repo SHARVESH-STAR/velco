@@ -59,7 +59,7 @@ const orderSchema = new Schema<IOrder>(
     status: {
       type: String,
       required: true,
-      enum: ["pending", "assigned", "completed", "cancelled"],
+      enum: ["pending", "assigned", "in_transit", "completed", "cancelled"],
       default: "pending",
     },
     deliveryRiderId: {

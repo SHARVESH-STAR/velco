@@ -8,6 +8,7 @@ import {
 
 import deliveryController from "../controllers/deliveryController.js";
 import { authenticate } from "../middleware/authMiddleware.js";
+import { upload } from "../middleware/upload.js";
 
 const router = Router();
 
@@ -37,6 +38,7 @@ router.get(
 // Update status of a specific delivery job
 router.put(
   "/jobs/:id/status",
+  upload.array("photos", 5) as unknown as RequestHandler,
   (req: Request, res: Response, next: NextFunction) =>
     deliveryController.updateJobStatus(req, res, next),
 );

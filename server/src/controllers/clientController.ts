@@ -127,13 +127,27 @@ class ClientController {
         adminId 
       } = req.body;
 
+      let parsedPickup = pickupLocation;
+      if (typeof pickupLocation === "string") {
+        try {
+          parsedPickup = JSON.parse(pickupLocation);
+        } catch {}
+      }
+
+      let parsedDropoff = dropoffLocation;
+      if (typeof dropoffLocation === "string") {
+        try {
+          parsedDropoff = JSON.parse(dropoffLocation);
+        } catch {}
+      }
+
       // Ensure we have pickup location coordinates
       let finalPickup = { name: "", lat: 0, lng: 0 };
-      if (pickupLocation && typeof pickupLocation === "object" && pickupLocation.name) {
+      if (parsedPickup && typeof parsedPickup === "object" && parsedPickup.name) {
         finalPickup = {
-          name: pickupLocation.name,
-          lat: Number(pickupLocation.lat) || 0,
-          lng: Number(pickupLocation.lng) || 0,
+          name: parsedPickup.name,
+          lat: Number(parsedPickup.lat) || 0,
+          lng: Number(parsedPickup.lng) || 0,
         };
       } else if (pickupLocationName) {
         const coords = await geocodeAddress(pickupLocationName);
@@ -149,11 +163,11 @@ class ClientController {
 
       // Ensure we have dropoff location coordinates
       let finalDropoff = { name: "", lat: 0, lng: 0 };
-      if (dropoffLocation && typeof dropoffLocation === "object" && dropoffLocation.name) {
+      if (parsedDropoff && typeof parsedDropoff === "object" && parsedDropoff.name) {
         finalDropoff = {
-          name: dropoffLocation.name,
-          lat: Number(dropoffLocation.lat) || 0,
-          lng: Number(dropoffLocation.lng) || 0,
+          name: parsedDropoff.name,
+          lat: Number(parsedDropoff.lat) || 0,
+          lng: Number(parsedDropoff.lng) || 0,
         };
       } else if (dropoffLocationName) {
         const coords = await geocodeAddress(dropoffLocationName);
@@ -235,6 +249,38 @@ class ClientController {
         message: "Images uploaded successfully",
         filePaths,
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  public async cancelOrder(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { id } = req.params;
+      const order = await Order.findOne({ _id: id, userId: req.user!.id });
+      if (!order) {
+        res.status(404).json({ message: "Order not found or access denied" });
+        return;
+      }
+
+      // Check if order is older than 24 hours
+      const createdAtTime = new Date((order as any).createdAt).getTime();
+      const elapsedMs = Date.now() - createdAtTime;
+      const twentyFourHoursMs = 24 * 60 * 60 * 1000;
+      if (elapsedMs > twentyFourHoursMs) {
+        res.status(400).json({ message: "Orders can only be cancelled within 24 hours of creation." });
+        return;
+      }
+
+      if (order.status === "cancelled") {
+        res.status(400).json({ message: "Order is already cancelled." });
+        return;
+      }
+
+      order.status = "cancelled";
+      await order.save();
+
+      res.status(200).json({ message: "Order cancelled successfully", order });
     } catch (error) {
       next(error);
     }

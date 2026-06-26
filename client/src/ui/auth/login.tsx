@@ -20,7 +20,9 @@ import Animated, {
   FadeInUp,
   Layout
 } from 'react-native-reanimated';
-import { SymbolView } from 'expo-symbols';
+import { SymbolView } from '@/components/cross-platform-symbol';
+import Constants from 'expo-constants';
+
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -50,6 +52,14 @@ const getApiUrl = () => {
   if (Platform.OS === 'web') {
     return 'http://localhost:3030';
   }
+  
+  // Try to use hostUri from Expo config to support physical devices and emulators
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const host = hostUri.split(':')[0];
+    return `http://${host}:3030`;
+  }
+  
   if (Platform.OS === 'android') {
     return 'http://10.0.2.2:3030';
   }
@@ -133,19 +143,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     buttonScale.value = withSpring(1);
   };
 
-  // Standard login credentials pre-filler helper
-  const handlePreFill = (role: UserRole) => {
-    if (role === 'client') {
-      setEmail('client@velco.com');
-      setPassword('clientpassword123');
-    } else if (role === 'admin') {
-      setEmail('admin@astro.com');
-      setPassword('adminpassword123');
-    } else if (role === 'delivery') {
-      setEmail('delivery@velco.com');
-      setPassword('deliverypassword123');
-    }
-  };
+
 
   // 1. Standard Login API Call
   const handleLogin = async () => {
@@ -188,7 +186,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         loggedUser.role = activeRole;
       }
 
-      Alert.alert('Success', `Welcome back, ${loggedUser.name}!`);
       onLoginSuccess(data.token, loggedUser);
     } catch (err: any) {
       console.error(err);
@@ -239,7 +236,6 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         throw new Error(data.message || 'Google Auth failed');
       }
 
-      Alert.alert('Success', `Registered and signed in as ${data.user.name}!`);
       onLoginSuccess(data.token, data.user);
     } catch (err: any) {
       console.error(err);
@@ -469,22 +465,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             )}
           </Animated.View>
 
-          {/* Quick Pre-fill Credentials (Design improvement for debugging/testing) */}
-          <View style={styles.prefillContainer}>
-            <Pressable 
-              onPress={() => handlePreFill(activeRole)}
-              style={({ pressed }) => [
-                styles.prefillPill, 
-                { borderColor: accentColor + '40', backgroundColor: accentColor + '08' },
-                pressed && { opacity: 0.7 }
-              ]}
-            >
-              <SymbolView name="sparkles" size={12} tintColor={accentColor} />
-              <ThemedText type="code" style={{ color: accentColor, fontSize: 10, fontWeight: '700' }}>
-                Pre-fill default {activeRole} credentials
-              </ThemedText>
-            </Pressable>
-          </View>
+
 
         </ThemedView>
       </ScrollView>
@@ -646,17 +627,5 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     marginTop: Spacing.half,
   },
-  prefillContainer: {
-    marginTop: Spacing.four,
-    alignItems: 'center',
-  },
-  prefillPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
+
 });

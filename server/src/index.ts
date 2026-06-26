@@ -3,6 +3,7 @@ import cors from "cors";
 
 import { config } from "./config.js";
 import { database } from "./db.js";
+import { socketManager } from "./socket.js";
 
 import { errorHandler } from "./middleware/errorHandler.js";
 import { actionLogger } from "./middleware/actionLogger.js";
@@ -53,7 +54,7 @@ export default app;
 
 // Only listen if not running on Vercel serverless environment
 if (!process.env.VERCEL) {
-  app.listen(config.PORT, "0.0.0.0", () => {
+  const server = app.listen(config.PORT, "0.0.0.0", () => {
     console.log(`\n🚀 Server is up and running!`);
     console.log(`- Local:   http://localhost:${config.PORT}`);
 
@@ -67,4 +68,5 @@ if (!process.env.VERCEL) {
     }
     console.log(""); // Empty line for better readability
   });
+  socketManager.initialize(server);
 }

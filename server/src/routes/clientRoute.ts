@@ -51,4 +51,11 @@ router.post(
     clientController.uploadImages(req, res, next),
 );
 
+// Cancel order
+router.put(
+  "/orders/:id/cancel",
+  (req: Request, res: Response, next: NextFunction) =>
+    clientController.cancelOrder(req, res, next),
+);
+
 export default router;
